@@ -1,0 +1,612 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Dokuz kimya IA deneyi için ortak ekipmana göre çakışmasız 10:00–16:00 lab planı.">
+<title>Kimya IA Lab Günü</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: başlık → kişi seçici → (kişi seçiliyse) kişi kartı → gün akışı şeridi (saat cetveli = büret taksimatı) → devirler, terazi sırası, güvenlik, kontrol listesi */
+:root{
+  --bg:#F3F5F8; --surface:#FFFFFF; --sunken:#E9ECF2; --ink:#141821; --ink2:#2F3542; --muted:#5A6274; --faint:#8C93A3;
+  --line:#D4D9E2; --line-soft:#E6E9EF; --grid:#E3E7EE; --tick:#AEB5C3;
+  --run:#3A3FB0; --on-run:#FFFFFF;   /* iyot-nişasta mavisi */
+  --prep:#C98613;                    /* iyot çözeltisi kehribarı */
+  --wait:#8B4FA3;                    /* permanganat moru */
+  --clean:#4F8A75; --brk:#A3ACBC;
+  --warn:#B8431F; --warn-bg:#FBEEE8; --info-bg:#EDEFFA; --sel:#3A3FB0;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --sans:"IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --lab:112px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F121A; --surface:#161A24; --sunken:#1E2330; --ink:#E8EBF1; --ink2:#C9CED9; --muted:#9AA2B4; --faint:#6D7487;
+    --line:#2B3241; --line-soft:#222837; --grid:#232A38; --tick:#4A5266;
+    --run:#8D92F2; --on-run:#10131C; --prep:#E2A43B; --wait:#C58CDC; --clean:#7DB8A2; --brk:#5B6477;
+    --warn:#F08B65; --warn-bg:#2B1A14; --info-bg:#1C2036; --sel:#8D92F2; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F121A; --surface:#161A24; --sunken:#1E2330; --ink:#E8EBF1; --ink2:#C9CED9; --muted:#9AA2B4; --faint:#6D7487;
+  --line:#2B3241; --line-soft:#222837; --grid:#232A38; --tick:#4A5266;
+  --run:#8D92F2; --on-run:#10131C; --prep:#E2A43B; --wait:#C58CDC; --clean:#7DB8A2; --brk:#5B6477;
+  --warn:#F08B65; --warn-bg:#2B1A14; --info-bg:#1C2036; --sel:#8D92F2; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0}
+body{background:var(--bg); color:var(--ink); font:15px/1.55 var(--sans)}
+.wrap{max-width:1180px; margin:0 auto; padding-inline:20px; padding-block:28px 72px; display:flex; flex-direction:column; gap:22px}
+@media (max-width:520px){ .wrap{padding-inline:16px} }
+
+.eyebrow{font:500 11.5px/1.2 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0}
+h1{font:800 clamp(30px,5.4vw,46px)/1.02 var(--display); letter-spacing:-.02em; margin:6px 0 10px; text-wrap:balance}
+h2{font:700 21px/1.2 var(--display); letter-spacing:-.01em; margin:0; text-wrap:balance}
+h3{font:800 26px/1.1 var(--display); margin:0; letter-spacing:-.01em}
+h4{font:500 11.5px/1.2 var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); margin:0 0 8px}
+.lede{max-width:68ch; color:var(--ink2); margin:0}
+.lede b{font-weight:600; color:var(--ink)}
+
+/* kişi seçici */
+.people{display:flex; flex-wrap:wrap; gap:6px; position:sticky; top:env(safe-area-inset-top,0px); z-index:5; background:var(--bg); padding-block:8px}
+.chip{appearance:none; border:1px solid var(--line); background:var(--surface); color:var(--ink); font:500 14px/1 var(--sans); padding:9px 13px; border-radius:999px; cursor:pointer}
+.chip:hover{border-color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--sel); border-color:var(--sel); color:var(--on-run)}
+.chip:focus-visible,.g-label:focus-visible,summary:focus-visible{outline:2px solid var(--sel); outline-offset:2px}
+
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px}
+.sec-head{display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:10px 20px; margin-bottom:12px}
+.legend{display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12.5px; color:var(--muted)}
+.legend span{display:inline-flex; align-items:center; gap:6px}
+.sw{display:inline-block; width:14px; height:10px; border-radius:3px; flex:none}
+
+/* gün akışı */
+.flow-wrap{order:2}
+.cards{order:3}
+.wrap.one .cards{order:2}
+.wrap.one .flow-wrap{order:3}
+.gantt-scroll{overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface)}
+.gantt{min-width:820px}
+.g-row{display:grid; grid-template-columns:var(--lab) minmax(0,1fr); border-bottom:1px solid var(--line-soft)}
+.g-row:last-child{border-bottom:0}
+.g-label{position:sticky; left:0; z-index:2; background:var(--surface); border:0; border-right:1px solid var(--line); text-align:left; padding:0 10px; font:500 13px/1.1 var(--sans); color:var(--ink); height:36px; display:flex; align-items:center; gap:6px; cursor:pointer; min-width:0}
+.g-label.res{font-size:12px; color:var(--muted); cursor:default}
+.g-row.sel .g-label{color:var(--sel); font-weight:600}
+.g-row.sel{background:color-mix(in srgb, var(--sel) 7%, var(--surface))}
+.g-track{position:relative; height:36px; background-image:repeating-linear-gradient(to right, var(--grid) 0 1px, transparent 1px calc(100% / 6))}
+.g-head .g-label{height:34px; cursor:default; font:500 11px var(--mono); color:var(--faint); letter-spacing:.06em}
+.g-head .g-track{height:34px; background-image:
+  repeating-linear-gradient(to right, var(--tick) 0 1px, transparent 1px calc(100% / 36)),
+  repeating-linear-gradient(to right, var(--ink2) 0 1px, transparent 1px calc(100% / 6));
+  background-size:100% 6px, 100% 12px; background-position:left bottom, left bottom; background-repeat:no-repeat}
+.hr{position:absolute; top:5px; transform:translateX(-50%); font:500 12px var(--mono); color:var(--ink2); font-variant-numeric:tabular-nums}
+.hr.first{transform:translateX(3px)} .hr.last{transform:translateX(calc(-100% - 3px))}
+.g-sep{display:block; background:var(--sunken); border-bottom:1px solid var(--line)}
+.g-sep span{position:sticky; left:0; display:inline-block; padding:6px 10px; font:500 11px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--muted)}
+.blk{position:absolute; top:5px; bottom:5px; border-radius:5px; font:500 11.5px/26px var(--sans); padding:0 6px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; transition:opacity .15s}
+.blk.dim{opacity:.25}
+.now{position:absolute; top:0; bottom:0; width:2px; margin-left:-1px; background:var(--warn); z-index:1; pointer-events:none}
+.now-tag{position:absolute; top:-1px; font:500 10.5px var(--mono); color:var(--warn); transform:translateX(4px); white-space:nowrap}
+
+.k-run{background:var(--run); color:var(--on-run)}
+.k-prep{background:color-mix(in srgb, var(--prep) 28%, var(--surface)); color:var(--ink); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--prep) 60%, transparent)}
+.k-wait{background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--wait) 34%, var(--surface)) 0 5px, color-mix(in srgb, var(--wait) 14%, var(--surface)) 5px 10px); color:var(--ink)}
+.k-break{background:var(--sunken); color:var(--muted)}
+.k-clean{background:color-mix(in srgb, var(--clean) 26%, var(--surface)); color:var(--ink)}
+.k-spare{background:transparent; color:var(--muted); box-shadow:inset 0 0 0 1px var(--faint); border:0; background-image:repeating-linear-gradient(90deg, transparent 0 6px, color-mix(in srgb, var(--faint) 12%, transparent) 6px 7px)}
+.k-off{background:transparent; color:var(--faint); box-shadow:inset 0 0 0 1px var(--line)}
+.k-res{background:var(--sunken); color:var(--ink); box-shadow:inset 0 0 0 1px var(--line)}
+.k-flame{background:color-mix(in srgb, var(--warn) 22%, var(--surface)); color:var(--ink); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--warn) 65%, transparent)}
+.blk.mine{box-shadow:inset 0 0 0 2px var(--sel)}
+
+/* kartlar */
+.cards{display:grid; gap:12px}
+.cards.all{grid-template-columns:repeat(auto-fill, minmax(min(100%, 430px), 1fr)); align-items:start}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; min-width:0}
+.card-head{display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 16px}
+.topic{color:var(--ink2); margin:4px 0 0; max-width:62ch}
+.span{font:500 12.5px var(--mono); color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap}
+.card-body{display:grid; grid-template-columns:minmax(0,1.45fr) minmax(0,1fr); gap:28px; margin-top:16px}
+.cards.all .card-body{grid-template-columns:minmax(0,1fr); gap:18px}
+@media (max-width:820px){ .card-body{grid-template-columns:minmax(0,1fr); gap:20px} }
+details.card > summary{list-style:none; cursor:pointer}
+details.card > summary::-webkit-details-marker{display:none}
+.sum-row{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.sum-name{font:800 21px/1.1 var(--display)}
+.sum-meta{display:flex; flex-wrap:wrap; gap:6px 12px; margin-top:6px; font-size:12.5px; color:var(--muted)}
+.pill{display:inline-flex; align-items:center; gap:5px; font:500 11.5px var(--mono); padding:2px 8px; border-radius:999px; background:var(--warn-bg); color:var(--warn)}
+.toggle{font:500 12px var(--mono); color:var(--sel)}
+details[open] .toggle .o{display:none} details:not([open]) .toggle .c{display:none}
+
+.steps{list-style:none; margin:0; padding:0}
+.step{display:grid; grid-template-columns:96px minmax(0,1fr); gap:12px; padding:10px 0; border-top:1px solid var(--line-soft)}
+.step:first-child{border-top:0; padding-top:0}
+.time{font:500 12.5px/1.5 var(--mono); color:var(--ink2); font-variant-numeric:tabular-nums; padding-top:1px}
+.step-t{display:flex; align-items:center; gap:8px; font-weight:600}
+.step p{margin:3px 0 0; color:var(--ink2); font-size:14px}
+.kname{font:500 10.5px var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--faint); margin-left:auto; white-space:nowrap}
+.step.k-spare-row .step-t, .step.k-off-row .step-t{color:var(--muted)}
+
+.side{display:flex; flex-direction:column; gap:20px; min-width:0}
+.res-list{list-style:none; margin:0; padding:0; display:grid; gap:6px}
+.res-list li{display:flex; justify-content:space-between; gap:12px; font-size:14px; border-bottom:1px dashed var(--line-soft); padding-bottom:5px}
+.res-list li span:last-child{font:500 12.5px var(--mono); color:var(--muted); white-space:nowrap; font-variant-numeric:tabular-nums}
+.kit{margin:0; padding-left:18px; color:var(--ink2); font-size:14px; display:grid; gap:3px}
+.notes{display:grid; gap:8px}
+.note{border-radius:9px; padding:10px 12px; background:var(--info-bg); font-size:14px; color:var(--ink)}
+.note.w{background:var(--warn-bg)}
+.note b{display:block; font:500 10.5px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--sel); margin-bottom:3px}
+.note.w b{color:var(--warn)}
+.pre{list-style:none; margin:0; padding:0; display:grid; gap:6px}
+.pre label{display:flex; gap:9px; align-items:flex-start; font-size:14px; cursor:pointer}
+.pre input{margin-top:3px; accent-color:var(--sel); width:16px; height:16px; flex:none}
+.pre input:checked + span{color:var(--muted); text-decoration:line-through}
+
+/* alt bölümler */
+.grid2{display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap:12px; align-items:start; order:4}
+.order5{order:5}
+.tl{list-style:none; margin:12px 0 0; padding:0; display:grid}
+.tl li{display:grid; grid-template-columns:56px minmax(0,1fr); gap:10px; padding:8px 0; border-top:1px solid var(--line-soft); font-size:14px}
+.tl li:first-child{border-top:0}
+.tl time{font:500 13px var(--mono); color:var(--ink2); font-variant-numeric:tabular-nums}
+.zones{display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap:10px; margin-top:12px}
+.zone{border:1px solid var(--line); border-radius:10px; padding:12px; font-size:14px; color:var(--ink2)}
+.zone strong{display:block; color:var(--ink); margin-bottom:3px}
+.zone.hot{border-color:color-mix(in srgb, var(--warn) 55%, var(--line)); background:var(--warn-bg)}
+.checks{margin:12px 0 0; padding-left:20px; display:grid; gap:7px; font-size:14px; color:var(--ink2)}
+.checks b{color:var(--ink); font-weight:600}
+.foot{font-size:13px; color:var(--muted); margin:0}
+@media (prefers-reduced-motion:reduce){ .blk{transition:none} }
+</style>
+</head>
+<body>
+<main class="wrap" id="wrap">
+  <header>
+    <p class="eyebrow">IB Kimya · Bireysel araştırma · Lab günü</p>
+    <h1>Kimya IA Lab Günü</h1>
+    <p class="lede"><b>9 deney, 10:00–16:00.</b> Spektrofotometre, çeker ocak, ısıtıcılar, etüv, büretler ve açık alev çakışmayacak şekilde dağıtıldı; öğle araları kaydırıldı, laboratuvar hiç boş kalmıyor. Adını seç, kendi planın açılsın. Süreler yöntemlerdeki adımlardan tahmin edildi; herkesin planında yedek süre var.</p>
+  </header>
+
+  <nav class="people" id="people" aria-label="Kişi seç"></nav>
+
+  <section class="cards" id="cards" aria-live="polite"></section>
+
+  <section class="panel flow-wrap" id="flow">
+    <div class="sec-head">
+      <h2>Gün akışı</h2>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="gantt-scroll"><div class="gantt" id="gantt"></div></div>
+  </section>
+
+  <div class="grid2">
+    <section class="panel">
+      <h2>Devir saatleri</h2>
+      <ol class="tl">
+        <li><time>10:00</time><span>Zaynep spektrofotometreyi açar (ısınma). Volkan ortak nişastayı kaynatır.</span></li>
+        <li><time>10:45</time><span>Çeker ocakta HCl hazırlığı biter; Doruk deney düzeneğini kurar.</span></li>
+        <li><time>11:30</time><span>Isıtıcı 3: Elif → İrem. Eda'nın filtre kâğıtları etüvden çıkar.</span></li>
+        <li><time>11:50</time><span>Isıtıcı 4 boşalır (Egemen bitirdi).</span></li>
+        <li><time>12:15</time><span>Spektrofotometre: Zaynep → Elif.</span></li>
+        <li><time>13:15</time><span>Spektrofotometre: Elif → Egemen.</span></li>
+        <li><time>14:45</time><span>Spektrofotometre yedek kullanıma açılır (Zaynep, Elif, Egemen tekrarları).</span></li>
+        <li><time>14:50</time><span>Sarp'ın son alevi söner.</span></li>
+        <li><time>15:15</time><span>Çeker ocak: Doruk → İrem (hekzan temizliği). Bu sırada laboratuvarda alev yakılmaz.</span></li>
+      </ol>
+    </section>
+    <section class="panel">
+      <h2>Analitik terazi sırası</h2>
+      <ol class="tl">
+        <li><time>10:00</time><span>Zaynep · malik asit ×5, KMnO₄</span></li>
+        <li><time>10:15</time><span>Ataberk · askorbik asit 0.250 g, KI</span></li>
+        <li><time>10:25</time><span>Volkan · askorbik asit ~0.088 g</span></li>
+        <li><time>11:30</time><span>Eda · 15 boş filtre kâğıdı</span></li>
+        <li><time>12:30</time><span>Egemen · C vitamini stoğu</span></li>
+        <li><time>13:50</time><span>Eda · Seri A (sonra 14:15 B, 14:40 C)</span></li>
+      </ol>
+      <p class="foot" style="margin-top:10px">0.01 g'lık terazilerden biri 10:45'ten itibaren gün boyu Doruk'un çeker ocağında kalıyor. Diğerlerini Elif, Egemen, İrem, Sarp ve Doruk'un porsiyon hazırlığı paylaşıyor.</p>
+    </section>
+  </div>
+
+  <section class="panel order5">
+    <h2>Güvenlik bölgeleri</h2>
+    <div class="zones">
+      <div class="zone hot"><strong>Açık alev · Sarp · 10:30–14:50</strong>Çeker ocaktan, kapıdan ve pencereden uzak tek tezgâh. Yakınında hekzan, KMnO₄ ve açık alkol şişesi bulunmaz. Ocaklar yalnızca alev yokken doldurulur.</div>
+      <div class="zone hot"><strong>Hekzan · İrem · 15:15–15:40</strong>O saate kadar kapalı dolapta. Yalnızca çeker ocakta, alevler söndükten sonra ve öğretmen gözetiminde. Bu sürede kimse alev yakmaz.</div>
+      <div class="zone"><strong>Yükseltgen · Zaynep</strong>KMnO₄ ve H₂SO₄ alkollerden ayrı tezgâhta; atıkları ayrı kapta.</div>
+      <div class="zone"><strong>Derişik HCl · Doruk · 10:00–10:45</strong>12 M asit yalnızca çeker ocakta, asit suya. Dökülmeler için NaHCO₃ hazır.</div>
+      <div class="zone"><strong>İyot · Volkan, Ataberk, Egemen</strong>Ağızla pipetleme yok, lekeler hemen yıkanır. Volkan ve Ataberk'in titrantları farklı derişimde: büret ve şişeleri etiketleyin.</div>
+    </div>
+  </section>
+
+  <section class="panel order5">
+    <h2>Öğretmenle kontrol edin</h2>
+    <ol class="checks">
+      <li><b>Spektrofotometre: 1 tane varsayıldı.</b> İki tane varsa Elif 10:45'te Zaynep'le aynı anda ölçebilir ve gün daha erken biter.</li>
+      <li><b>Çeker ocak: 1.</b> İki tane varsa İrem hekzan temizliğini 15:00'te yapabilir.</li>
+      <li><b>Isıtıcı: 4.</b> Üç tane varsa Egemen suyu su ısıtıcısında termometreyle 80 °C'ye getirir.</li>
+      <li><b>Terazi:</b> 1 analitik, en az 2 adet 0.01 g.</li>
+      <li><b>Etüv: 1</b> (yalnız Eda). <b>Büret: en az 2</b> (Volkan, Ataberk).</li>
+      <li><b>Balon joje:</b> sabah aynı anda ~18 adet (Volkan 2, Ataberk 2, Doruk 2, Eda 6, Zaynep 6). Egemen öğlen boşalanları kullanır.</li>
+      <li><b>Saf su: en az 10 L.</b> İrem'in su banyoları tek başına ~3.5 L.</li>
+      <li><b>Lugol stoğu: en az 50 cm³</b> (Volkan 12.5, Ataberk 25, Egemen).</li>
+    </ol>
+  </section>
+</main>
+
+<script>
+const KINDS = {run:"Deney / ölçüm", prep:"Hazırlık", wait:"Bekleme", clean:"Temizlik", break:"Mola", spare:"Yedek", off:"Lab dışı"};
+
+const P = [
+{id:"volkan", name:"Volkan", topic:"Isıtma sıcaklığının meyve suyundaki C vitaminine etkisi · iyot titrasyonu",
+ blocks:[
+  {s:"10:00",e:"10:15",k:"prep",t:"Ortak nişasta",g:"Nişasta",d:"Isıtıcı 1'de 100 cm³ su kaynat, 1 g nişastayı az soğuk suyla bulamaç yapıp ekle, soğumaya bırak. Bu parti Ataberk'e de yeter; ikinizin toplam ihtiyacı ~30 cm³."},
+  {s:"10:15",e:"10:40",k:"prep",t:"Standart, titrant, kontrol testi",g:"Çözeltiler",d:"Analitik terazi sıran 10:25: ~0.088 g askorbik asit → 100 cm³ joje, gerçek kütleyi yaz. 12.5 cm³ Lugol → 500 cm³ joje. Nişasta soğuyunca kontrol testi; mavi-siyah gelmezse devam etme."},
+  {s:"10:40",e:"11:10",k:"run",t:"Standardizasyon",g:"Std.",d:"Büret 1. Kaba titre + 0.10 cm³ içinde uyuşan üç titre. İyot derişimini hesapla, deftere yaz."},
+  {s:"11:10",e:"12:10",k:"run",t:"Tur 1 · 25 / 45 / 65 / 85 / 100 °C",g:"Tur 1",d:"İki beherle çalış: biri soğurken sıradakini ısıt. Numune başına ~12 dk."},
+  {s:"12:10",e:"13:10",k:"run",t:"Tur 2 · 25 / 45 / 65 / 85 / 100 °C",g:"Tur 2",d:"Aynı sıra, aynı ısıtma ve karıştırma düzeni."},
+  {s:"13:10",e:"13:40",k:"break",t:"Öğle arası",g:"Mola",d:"Meyve suyu şişesi kapalı ve ışıktan uzak dursun."},
+  {s:"13:40",e:"14:40",k:"run",t:"Tur 3 · 25 / 45 / 65 / 85 / 100 °C",g:"Tur 3",d:"Son tur; toplam 15 titrasyon."},
+  {s:"14:40",e:"15:00",k:"clean",t:"Temizlik",g:"Temizlik",d:"İyot atıkları atık kabına, büreti saf suyla çalkala, Isıtıcı 1'i kapat."},
+  {s:"15:00",e:"16:00",k:"spare",t:"Yedek",g:"Yedek",d:"Uyuşmayan titre varsa o sıcaklığı tekrarla."}],
+ kit:["Analitik terazi · 10:25","100 + 500 cm³ balon joje","25.0 cm³ pipet, beyaz fayans, saat camı","Buz-su banyosu"],
+ notes:[
+  {w:1,x:"Buharlaşma: 85–100 °C'de beherdeki 25.0 cm³'ün bir kısmı uçar, soğuyunca geriye 25.0 cm³ kalmaz. Öneri: soğuyan numuneyi 50.0 cm³ jojeye aktar, beheri saf suyla çalkalayıp ekle, çizgiye tamamla ve 25.0 cm³ titre et (seyreltme faktörü 2). Bu, buharlaşmayı da düzeltir."},
+  {w:1,x:"21 °C hedefi: laboratuvar 21 °C'den sıcaksa numune beklemekle bu sıcaklığa inmez. Buz-su banyosunda soğut ve hedefi o gün ölçtüğün oda sıcaklığı olarak sabitle. Plandaki 12 dk/numune bu hızlı soğutmaya dayanıyor."},
+  {w:0,x:"Tur düzeni senin önerin: önce beş sıcaklığın 1. tekrarı, sonra 2. ve 3. Meyve suyunun gün içinde bozulması böylece sıcaklıklara eşit dağılır."}],
+ before:["Buharlaşma çözümünü seç; joje yolunu seçersen iki adet 50 cm³ joje ayır.","Buz getir."]},
+
+{id:"sarp", name:"Sarp", topic:"Karbon zinciri uzunluğu ve yanma entalpisi · alkol ocağı kalorimetrisi",
+ blocks:[
+  {s:"10:00",e:"10:30",k:"prep",t:"Düzenek",g:"Düzenek",d:"Alev tezgâhını kullan: çeker ocaktan, kapıdan ve pencereden uzak. Statif, folyo kapak, U şeklinde siper. Ocak–beher mesafesini cetvelle ölç ve işaretle."},
+  {s:"10:30",e:"11:30",k:"run",t:"Alkol 1 · 3 deneme",g:"Alkol 1",d:"Her deneme ~18 dk: ocağı tart → suyun ilk sıcaklığı → yak, karıştır → hedef ΔT → söndür, kapağı kapat → soğut → tart."},
+  {s:"11:30",e:"12:30",k:"run",t:"Alkol 2 · 3 deneme",g:"Alkol 2",d:"Alkol değişiminde düzeneği ve beheri temizle."},
+  {s:"12:30",e:"13:00",k:"break",t:"Öğle arası",g:"Mola",d:"Alev sönük, ocak kapakları kapalı."},
+  {s:"13:00",e:"13:55",k:"run",t:"Alkol 3 · 3 deneme",g:"Alkol 3",d:"Aynı prosedür."},
+  {s:"13:55",e:"14:50",k:"run",t:"Alkol 4 · 3 deneme",g:"Alkol 4",d:"14:50'de son alev söner; İrem'in hekzan temizliği buna bağlı."},
+  {s:"14:50",e:"15:20",k:"clean",t:"Temizlik",g:"Temizlik",d:"Beherlerdeki isi temizle, alkolleri kapalı dolaba kaldır."},
+  {s:"15:20",e:"15:40",k:"off",t:"Alev yok",g:"Alev yok",d:"İrem çeker ocakta hekzan kullanıyor; bu sırada ocak yakma."},
+  {s:"15:40",e:"16:00",k:"spare",t:"Yedek",g:"Yedek",d:"Sapan bir deneme varsa tekrarla (hekzan işi bittikten sonra)."}],
+ kit:["Ortak 0.01 g terazi · her denemede 2 tartım","Her alkole ayrı, etiketli ocak","250 mL beher, 100 mL dereceli silindir, folyo, cetvel, termometre"],
+ notes:[
+  {w:1,x:"Yöntemde adı geçen alkoller metanol, 1-propanol ve 1-bütanol. Plan, etanolün de olduğu 4 alkole göre yapıldı (12 deneme; sıra metanol → etanol → 1-propanol → 1-bütanol). Etanol yoksa 13:55'te bitirirsin."},
+  {w:1,x:"Ocakları yalnızca hiç alev yokken doldur. İrem'in hekzanı ve Zaynep'in KMnO₄'ü senin tezgâhından uzakta duracak."},
+  {w:0,x:"Her denemede beheri soğuk suyla çalkalayıp kurula ve 100.0 mL taze su koy; ilk sıcaklık her denemede yakın olsun."},
+  {w:0,x:"Söndürür söndürmez ocağın kapağını kapat. Sıcak fitilden buharlaşan alkol, yanan kütleyi olduğundan büyük gösterir."}],
+ before:["Alkol listesini kesinleştir (etanol var mı?).","Her alkol için ayrı, etiketli ocak."]},
+
+{id:"ataberk", name:"Ataberk", topic:"Taze ve paketli portakal/limon suyunda C vitamini · iyot titrasyonu",
+ blocks:[
+  {s:"10:00",e:"10:45",k:"prep",t:"Çözeltiler",g:"Çözeltiler",d:"Nişastayı Volkan'ın ortak partisinden al, kendin kaynatma. Lugol 1:10: 25 cm³ → 250 cm³ joje, ~0.5 g KI ekle, folyoya sarılı şişeye koy. Analitik terazi sıran 10:15: 0.250 g askorbik asit → 250 cm³, gerçek kütleyi yaz."},
+  {s:"10:45",e:"11:30",k:"run",t:"Standardizasyon",g:"Std.",d:"Büret 2. Kaba titre + 0.10 cm³ içinde uyuşan üç titre. I₂ derişimini seyreltmeden değil, titrelerden hesapla."},
+  {s:"11:30",e:"12:00",k:"break",t:"Öğle arası",g:"Mola",d:"Arayı burada ver: meyveler henüz sıkılmadı, sonraki 2 sa 45 dk bölünmemeli."},
+  {s:"12:00",e:"12:45",k:"prep",t:"Örnek hazırlığı",g:"Sık + süz",d:"Portakal ve limonları şimdi sık. Önce tülbentten, sonra filtre kâğıdından süz. Paket suları aç, aynı şekilde süz. İki limon örneğini 1:5 seyrelt. Dört örneğin sıcaklığını yaz (±2 °C)."},
+  {s:"12:45",e:"14:45",k:"run",t:"Titrasyonlar",g:"Titrasyonlar",d:"Sıra: taze portakal → paket portakal → taze limon → paket limon. Her örnek 3 uyumlu titre. Her titrasyonun saatini not et."},
+  {s:"14:45",e:"15:05",k:"clean",t:"Temizlik",g:"Temizlik",d:"İyot atıkları, büret ve cam malzeme."},
+  {s:"15:05",e:"16:00",k:"off",t:"Lab dışı",g:"Hesaplar",d:"Aşama 5 hesapları laboratuvar gerektirmiyor."}],
+ kit:["Analitik terazi · 10:15","2 × 250 cm³ balon joje, 25.0 cm³ pipet","Meyve sıkacağı, tülbent, folyo","Portakal, limon, iki paket meyve suyu"],
+ notes:[
+  {w:0,x:"12:45–14:45 bloğunda ara yok; su ve atıştırmalığı 11:30 arasında hallet."},
+  {w:0,x:"Volkan'la aynı saatlerde iyot titrasyonu yapıyorsunuz ve titrantlarınız farklı derişimde (1:10 ve 1:40). Büret ve şişeleri etiketleyin."},
+  {w:0,x:"Lugol stoğunu Volkan (12.5 cm³) ve Egemen ile paylaşıyorsun; şişede en az 50 cm³ olmalı."}],
+ before:["Meyveleri ve paket suları getir.","Lugol stoğunu Volkan ve Egemen'le birlikte kontrol edin."]},
+
+{id:"doruk", name:"Doruk", topic:"CaCO₃ yüzey alanı ve CO₂ oluşum hızı · kütle kaybı, çeker ocak",
+ blocks:[
+  {s:"10:00",e:"10:45",k:"prep",t:"2.0 M HCl · 700 cm³",g:"HCl",d:"Çeker ocakta, gözlük + eldiven, asit suya. Beherler soğurken ilk boyutun parçalarını ölçmeye başla; sonra jojelerde tamamla ve 1 L şişede birleştir."},
+  {s:"10:45",e:"11:15",k:"prep",t:"İlk porsiyonlar + kurulum",g:"Kurulum",d:"İlk boyutun 3 × 2.00 g porsiyonu. Teraziyi çeker ocağa yerleştir, boş erlenle 1 dk test et, telefonu standa kur. Kapak (sash) yüksekliğini işaretle."},
+  {s:"11:15",e:"12:55",k:"run",t:"Deney 1–7",g:"Deney 1–7",d:"Deneme başına ~14 dk (600 s kayıt + hazırlık). Kayıt sürerken çeker ocağa dokunma; yan tezgâhta sonraki porsiyonları ortak terazide hazırla."},
+  {s:"12:55",e:"13:15",k:"break",t:"Ara",g:"Mola",d:"İki kayıt arasında kısa ara."},
+  {s:"13:15",e:"15:10",k:"run",t:"Deney 8–15",g:"Deney 8–15",d:"Son deneme ~15:07'de biter."},
+  {s:"15:10",e:"15:30",k:"clean",t:"Çeker ocağı boşalt, temizlik",g:"Temizlik",d:"Çeker ocağı 15:15'e kadar boşalt; İrem hekzan için oraya geçecek. Kullanılmış asidi atık beherine dök."},
+  {s:"15:30",e:"16:00",k:"off",t:"Lab dışı",g:"Video",d:"Videolardan 2 s aralıkla okuma 15 × 301 ≈ 4 500 değer ediyor; bunu evde yap."}],
+ kit:["0.01 g terazi · gün boyu çeker ocakta, yalnız sende","İkinci 0.01 g terazi · ortak, porsiyonlar için","Kumpas, havan","500 + 200 cm³ balon joje, 1 L şişe","3–4 adet 100 cm³ erlen (deneme aralarında yıka)","Pamuk, telefon standı"],
+ notes:[
+  {w:1,x:"Porsiyonları mümkünse lab gününden önce hazırla. 0.40 cm'lik parçalarda 2.00 g yaklaşık 15–20 parça ediyor; her birini 3 yönden ölçmek tek porsiyon için bile uzun sürer."},
+  {w:0,x:"Gün içinde hazırlayacaksan sırayı 1.00 cm'den başlatmak işini kolaylaştırır: büyük parçalar hızlı ölçülür, küçükleri kayıtlar sürerken hazırlarsın."},
+  {w:0,x:"Kayıt sırasında çeker ocağı başka kimse kullanmıyor ve kapağı oynatılmıyor; hava akımı terazi okumasını oynatır."}],
+ before:["CaCO₃ porsiyonları (mümkünse önceden).","Telefon şarjı ve depolama alanı (15 × 10 dk video)."]},
+
+{id:"irem", name:"İrem", topic:"Mum:yağ oranı ve ruj karışımının tam erime sıcaklığı · LabQuest",
+ blocks:[
+  {s:"10:00",e:"10:15",k:"prep",t:"LabQuest ve statif",g:"Kurulum",d:"Sürekli kayıt, 1 örnek/s. En uzun süreyi 20 dk yap; 4:1 karışım 15 dk'yı aşabilir. Statif + kelepçe + bosshead."},
+  {s:"10:15",e:"11:00",k:"prep",t:"Dört formülasyon",g:"Formülasyon",d:"Isıtıcı 2'de su banyosu. Arı mumu + parafini erit, karıştır, hint yağını tartarak ekle (1:1, 2:1, 3:1, 4:1)."},
+  {s:"11:00",e:"11:20",k:"wait",t:"Katılaşma",g:"Katılaşma",d:"Dört beher aynı yerde, aynı koşulda soğusun."},
+  {s:"11:20",e:"11:50",k:"break",t:"Öğle arası",g:"Mola",d:"Karışımlar katılaşmaya devam ediyor."},
+  {s:"11:50",e:"12:00",k:"prep",t:"Su banyoları",g:"",d:"Isıtıcı 2 ve 3'e oda sıcaklığında 250 mL saf su; prob derinliğini işaretle."},
+  {s:"12:00",e:"13:00",k:"run",t:"Tur 1 · 1:1 / 2:1 / 3:1 / 4:1",g:"Tur 1",d:"~15 dk/deneme. Isıtıcı 2 ve 3'ü sırayla kullan; her denemeye taze 250 mL su ve taze 1.00 g örnekle başla. A, B, C aşamalarını ve C'deki sıcaklığı yaz."},
+  {s:"13:00",e:"14:00",k:"run",t:"Tur 2 · 1:1 / 2:1 / 3:1 / 4:1",g:"Tur 2",d:"Aynı düzen."},
+  {s:"14:00",e:"15:00",k:"run",t:"Tur 3 · 1:1 / 2:1 / 3:1 / 4:1",g:"Tur 3",d:"12 ölçüm tamam. LabQuest dosyalarını kaydet."},
+  {s:"15:00",e:"15:15",k:"clean",t:"Mekanik temizlik",g:"Temizlik",d:"Isıtıcıları kapat, kalıntıyı spatula ve kâğıt havluyla al."},
+  {s:"15:15",e:"15:40",k:"clean",t:"Hekzan temizliği · çeker ocak",g:"Hekzan",d:"Doruk çeker ocağı 15:15'te boşaltıyor, Sarp'ın son alevi 14:50'de sönüyor. Öğretmen gözetiminde; atık hekzan belirlenen kaba."},
+  {s:"15:40",e:"16:00",k:"spare",t:"Yedek",g:"Yedek",d:"Toparlanma."}],
+ kit:["LabQuest + sıcaklık probu, statif","Ortak 0.01 g terazi · her denemede 1.00 g","2 × 400 mL beher (iki su banyosu)","~3.5 L saf su","En az 3 özdeş deney tüpü"],
+ notes:[
+  {w:1,x:"İki ısıtıcıyı sırayla kullan. Tek ısıtıcıyla sıcak tablanın her denemeden sonra soğuması gerekir; deneme ~25 dk sürer ve 12 deneme 15:00'e sığmaz."},
+  {w:1,x:"Hekzan şişesi 15:15'e kadar kapalı dolapta kalsın; Sarp gün boyu açık alevle çalışıyor."},
+  {w:0,x:"Turlar halinde ilerle (her turda dört oran). Aynı oranı arka arkaya üç kez yapmazsan gün içindeki kaymalar oranlara eşit dağılır."},
+  {w:0,x:"12 deneme × 250 mL = 3 L saf su; sınıfın saf su ihtiyacının en büyük kalemi."}],
+ before:["Hekzan kullanımını 15:15 için öğretmenle konuş.","3.5 L saf suyun ayrıldığından emin ol."]},
+
+{id:"egemen", name:"Egemen", topic:"Demleme süresi ve yeşil çayın indirgeme kapasitesi · Lugol + spektrofotometre",
+ blocks:[
+  {s:"10:00",e:"10:20",k:"prep",t:"Hazırlık",g:"Hazırlık",d:"15 çay porsiyonunu tart, etiketle (süre + tekrar). Huni ve filtre kâğıtlarını diz."},
+  {s:"10:20",e:"11:50",k:"run",t:"Demleme · 3 tur × 5 süre",g:"Demleme",d:"Isıtıcı 4'te su 80 °C. Her tur bağımsız demleme. Turda en uzun süreden başla, diğerlerini bitişleri yakın olacak şekilde kademeli başlat. Süre dolunca süz, kapalı kapta oda sıcaklığına bırak."},
+  {s:"11:50",e:"12:30",k:"break",t:"Öğle arası",g:"Mola",d:"Çaylar kapalı kaplarda soğuyor."},
+  {s:"12:30",e:"13:15",k:"prep",t:"Taze standartlar + seyreltik Lugol",g:"Standartlar",d:"Askorbik asit havayla oksitlendiği için standartları sabah değil şimdi hazırla. Analitik terazi sıran 12:30. Zaynep'in boşalttığı jojeleri kullanabilirsin."},
+  {s:"13:15",e:"14:45",k:"run",t:"Spektrofotometre",g:"Spektrofotometre",d:"Distile suyla sıfırla → kontrol (Lugol + su) + 5 standart → 15 çay örneği ve blankları. Lugol'ü her örneğe sabit aralıklarla ekle; böylece her biri aynı tepkime süresinde okunur."},
+  {s:"14:45",e:"15:15",k:"clean",t:"Temizlik",g:"Temizlik",d:"Küvetler, cam malzeme, iyot atıkları."},
+  {s:"15:15",e:"16:00",k:"spare",t:"Yedek",g:"Yedek",d:"Spektrofotometre yedek kullanımda; tekrar gereken ölçümler için."}],
+ kit:["Ortak 0.01 g terazi · 10:00","Analitik terazi · 12:30","100 cm³ joje + 5 standart kabı","Termometre, kronometre, küvetler","Isıtıcı yoksa su ısıtıcısı + termometre"],
+ notes:[
+  {w:1,x:"Yöntemde sayılar eksik: çay kütlesi, su hacmi, demleme süreleri, Lugol derişimi ve hacmi, örnek hacmi, tepkime süresi, dalga boyu, blank. Lab gününden önce kesinleşmeli. Bu plan 5 demleme süresi ve en uzunu 10 dk varsayıyor."},
+  {w:1,x:"Çayın kendi rengi absorbansa karışır. Her çay için Lugol yerine aynı hacimde su konmuş bir blank ölç ve çayın kendi absorbansını çıkar."},
+  {w:0,x:"Her demleme süresi için üç ayrı demleme yapıyorsun; aynı çayı üç kez okumak demlemenin değişkenliğini göstermez."}],
+ before:["Eksik sayıların hepsini yaz (yukarıdaki liste).","C vitamini tabletinin içeriğini (mg) kutudan not al."]},
+
+{id:"elif", name:"Elif", topic:"Öğütme süresi ve moka kahvesinde çözünmüş madde · spektrofotometre",
+ blocks:[
+  {s:"10:00",e:"10:15",k:"prep",t:"Hazırlık",g:"Hazırlık",d:"4 × 15.00 g kahve tart; 7S, 15S, 30S ve Kalibrasyon diye etiketle."},
+  {s:"10:15",e:"11:30",k:"run",t:"Dört demleme",g:"Moka pot",d:"Isıtıcı 3. Her porsiyonu demlemeden hemen önce öğüt. Demleme bitince moka potu soğuk suyla soğut, kurula, sıradakine geç (~18 dk/demleme). Her demlemeyi hemen süz, hacmini yaz. 11:30'da ısıtıcıyı İrem'e bırak."},
+  {s:"11:30",e:"11:50",k:"prep",t:"Kalibrasyon çözeltileri",g:"Kalib.",d:"6 × 10.0 mL. Stok ve örnekler için iki aday ön-seyreltme hazırla (ör. 1:10 ve 1:20)."},
+  {s:"11:50",e:"12:15",k:"break",t:"Ara",g:"Mola",d:"Örnekler kapalı kapta oda sıcaklığına iniyor."},
+  {s:"12:15",e:"13:15",k:"run",t:"Spektrofotometre",g:"Spektrofotometre",d:"Önce aday seyreltmeleri oku, absorbansı ~1.5'i aşmayanı seç. Saf su blankı → 6 kalibrasyon × 3 okuma → 7S, 15S, 30S × 3 okuma."},
+  {s:"13:15",e:"13:45",k:"clean",t:"Temizlik",g:"Temizlik",d:"Moka pot, huniler, küvet."},
+  {s:"13:45",e:"16:00",k:"off",t:"Lab dışı",g:"Serbest",d:"İsteğe bağlı ek tekrar için nota bak."}],
+ kit:["Ortak 0.01 g terazi · 10:00","Öğütücü, moka pot, filtre kâğıdı, huni","10 mL dereceli silindir veya pipet, küvet"],
+ notes:[
+  {w:1,x:"Yöntemin 4. adımında altı kalibrasyon çözeltisinin bileşimi yazmıyor. Lab gününden önce oranları belirle."},
+  {w:1,x:"Seyreltilmemiş moka kahvesinin absorbansı büyük olasılıkla cihazın güvenilir aralığının üstünde çıkar. Stoğu ve örnekleri aynı oranla ön-seyreltmeyi planla; oranı slotunun ilk dakikalarında seç."},
+  {w:0,x:"Her öğütme süresi için tek demleme var; üç okuma cihazın tekrarlanabilirliğini ölçer, demlemenin değil. İstersen ek tekrar sığar: 13:45–14:45 Isıtıcı 4'te her süre için birer demleme daha, ölçüm 14:45–16:00 yedek slotunda."}],
+ before:["Altı kalibrasyon çözeltisinin oranlarını yaz.","Kahve çekirdeği, öğütücü, moka pot."]},
+
+{id:"eda", name:"Eda", topic:"Sitrik asit derişimi ve albümin kümeleşmesi · gravimetri",
+ blocks:[
+  {s:"10:00",e:"10:10",k:"prep",t:"Filtre kâğıtları etüve",g:"",d:"15 kâğıdı kurşun kalemle etiketle ve etüve koy; sonraki kurutmayla aynı sıcaklık. Çıkış 11:30."},
+  {s:"10:10",e:"10:50",k:"prep",t:"Çözeltiler",g:"Çözeltiler",d:"Albümin: 10.00 g yumurta akı → 250 mL joje. Beş sitrik asit çözeltisi: 0.000 / 0.050 / 0.100 / 0.150 / 0.200 mol dm⁻³."},
+  {s:"10:50",e:"11:30",k:"wait",t:"Seri A (10:55) ve B (11:20)",g:"Seri A · B",d:"Her seride beş derişimin birer tekrarı karıştırılır, üstü kapatılıp 60 dk bekletilir."},
+  {s:"11:30",e:"11:55",k:"prep",t:"Kâğıtları tart · Seri C (11:45)",g:"Tartım · C",d:"Kâğıtları etüvden al, desikatörde soğut, tart. 11:45'te Seri C'yi karıştır."},
+  {s:"11:55",e:"13:10",k:"run",t:"Süzme A → B → C",g:"Süzme",d:"A 11:55, B 12:20, C 12:45; beş huni aynı anda. Her seri süzülünce etüve: A 12:20, B 12:45, C 13:10 (90 dk)."},
+  {s:"13:10",e:"13:45",k:"break",t:"Öğle arası",g:"Mola",d:"Etüv çalışıyor."},
+  {s:"13:45",e:"14:55",k:"run",t:"Tartımlar · A 13:50, B 14:15, C 14:40",g:"Tartımlar",d:"Her seriyi 90 dk sonunda çıkar, desikatörde soğut, tart."},
+  {s:"14:55",e:"15:20",k:"clean",t:"Temizlik",g:"Temizlik",d:"Beherler, huniler, süzme düzeneği."},
+  {s:"15:20",e:"16:00",k:"spare",t:"Sabit kütle kontrolü",g:"Kontrol",d:"İsteğe bağlı: kâğıtları 15 dk daha kurutup yeniden tart. Kütle değişmiyorsa kuruma tamam; değişiyorsa 90 dk yetmiyor demektir."}],
+ kit:["Analitik terazi · 11:30, 13:50, 14:15, 14:40","250 mL joje + 5 balon joje","15 beher, 5 huni + süzme düzeneği, desikatör"],
+ notes:[
+  {w:1,x:"Tartım hassasiyeti: 10 g yumurta akı yaklaşık 1 g protein içerir, yani mL başına ~4 mg. 20 mL albümin çözeltisinden en fazla ~85 mg kümelek çıkar; ±0.01 g terazide bu %10'u aşan belirsizlik demek. Analitik terazi kullan ya da albümin hacmini büyüt."},
+  {w:1,x:"Etüv sıcaklığı yöntemde yok. Bir değer seç ve ön kurutmada da aynısını kullan."},
+  {w:0,x:"Seriler 25 dk arayla başlıyor; böylece süzme sırasında beş huni yetiyor."}],
+ before:["Etüv sıcaklığını ve albümin/sitrik asit hacimlerini sabitle.","Taze yumurta."]},
+
+{id:"zaynep", name:"Zaynep", topic:"Malik asit derişimi ve KMnO₄ tepkimesinin başlangıç hızı · 525 nm",
+ blocks:[
+  {s:"10:00",e:"10:45",k:"prep",t:"Cihazı aç · çözeltiler",g:"Çözeltiler",d:"Gelir gelmez spektrofotometreyi aç, ısınsın. Analitik terazi sıran 10:00. Beş malik asit çözeltisi (0.10–0.50 mol dm⁻³) ve KMnO₄ çözeltisi. H₂SO₄'ü hazır seyreltik stoktan al."},
+  {s:"10:45",e:"12:15",k:"run",t:"Spektrofotometre · 525 nm",g:"Spektrofotometre",d:"Saf su blankı. Önce pilot: en derişik çözeltiyle tek deneme. Sonra 15 deneme, ~6 dk/deneme; derişimleri turlar halinde ölç."},
+  {s:"12:15",e:"12:45",k:"clean",t:"Temizlik",g:"Temizlik",d:"KMnO₄ atıkları ayrı kaba. Cihaz 12:15'te Elif'e geçiyor."},
+  {s:"12:45",e:"14:45",k:"off",t:"Lab dışı",g:"Serbest",d:"Pilot yavaş çıktıysa yedek slotu kullanacaksın."},
+  {s:"14:45",e:"16:00",k:"spare",t:"Yedek spektrofotometre slotu",g:"Yedek",d:"Yetişmeyen ya da sapan denemeler için."}],
+ kit:["Analitik terazi · 10:00","6 balon joje, pipetler, küvet, kronometre"],
+ notes:[
+  {w:1,x:"Permanganatın organik asitlerle tepkimesi oda sıcaklığında başta yavaş olabilir; Mn²⁺ oluştukça hızlanır. Pilotta 120 s içinde absorbans belirgin düşmüyorsa kayıt süresini uzat ve yetişmeyen denemeleri 14:45–16:00 yedek slotunda tamamla."},
+  {w:1,x:"KMnO₄ güçlü bir yükseltgen; Sarp'ın alkollerinden ve alevinden uzak tezgâhta çalış."},
+  {w:0,x:"Başlangıç absorbansı 1'in altında kalsın: 525 nm'de küvetteki MnO₄⁻ yaklaşık 4 × 10⁻⁴ mol dm⁻³ iken A ≈ 1."}],
+ before:["KMnO₄ derişimini başlangıç absorbansı 1'in altında kalacak şekilde hesapla.","Seyreltik H₂SO₄ stoğu var mı, sor."]}
+];
+
+const R = [
+ {name:"Spektrofotometre", b:[{s:"10:00",e:"10:45",t:"Isınma",k:"spare"},{s:"10:45",e:"12:15",p:"zaynep",t:"Zaynep · 525 nm"},{s:"12:15",e:"13:15",p:"elif",t:"Elif"},{s:"13:15",e:"14:45",p:"egemen",t:"Egemen"},{s:"14:45",e:"16:00",t:"Yedek",k:"spare"}]},
+ {name:"Çeker ocak", b:[{s:"10:00",e:"10:45",p:"doruk",t:"Doruk · HCl"},{s:"10:45",e:"15:15",p:"doruk",t:"Doruk · deneyler (terazi içeride)"},{s:"15:15",e:"15:40",p:"irem",t:"İrem · hekzan"}]},
+ {name:"Isıtıcı 1", b:[{s:"10:00",e:"14:40",p:"volkan",t:"Volkan · nişasta, numuneler"}]},
+ {name:"Isıtıcı 2", b:[{s:"10:15",e:"11:00",p:"irem",t:"İrem"},{s:"12:00",e:"15:00",p:"irem",t:"İrem · banyo A"}]},
+ {name:"Isıtıcı 3", b:[{s:"10:15",e:"11:30",p:"elif",t:"Elif · moka pot"},{s:"12:00",e:"15:00",p:"irem",t:"İrem · banyo B"}]},
+ {name:"Isıtıcı 4", b:[{s:"10:20",e:"11:50",p:"egemen",t:"Egemen · 80 °C"},{s:"13:45",e:"14:45",p:"elif",t:"Elif · isteğe bağlı",k:"spare"}]},
+ {name:"Etüv", b:[{s:"10:00",e:"11:30",p:"eda",t:"Eda · kâğıtlar"},{s:"12:20",e:"14:40",p:"eda",t:"Eda · A, B, C"}]},
+ {name:"Büret 1", b:[{s:"10:40",e:"14:40",p:"volkan",t:"Volkan"}]},
+ {name:"Büret 2", b:[{s:"10:45",e:"14:45",p:"ataberk",t:"Ataberk"}]},
+ {name:"Açık alev", b:[{s:"10:30",e:"14:50",p:"sarp",t:"Sarp · alkol ocakları",k:"flame"}]}
+];
+
+const D0 = 600, SPAN = 360;
+const T = s => { const a = s.split(":"); return (+a[0]) * 60 + (+a[1]); };
+const L = s => ((T(s) - D0) / SPAN * 100);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const byId = id => P.find(p => p.id === id);
+let sel = "herkes";
+
+function store(k, v){ try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch(e){ return null; } }
+
+function renderChips(){
+  const nav = document.getElementById("people");
+  nav.innerHTML = "";
+  [{id:"herkes", name:"Herkes"}].concat(P).forEach(p => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.type = "button"; b.id = "chip-" + p.id;
+    b.textContent = p.name;
+    b.setAttribute("aria-pressed", String(p.id === sel));
+    b.addEventListener("click", () => select(p.id));
+    nav.appendChild(b);
+  });
+}
+
+function renderLegend(){
+  const lg = document.getElementById("legend");
+  const items = [["run","Deney / ölçüm"],["prep","Hazırlık"],["wait","Bekleme"],["clean","Temizlik"],["break","Mola"],["spare","Yedek"],["res","Ortak ekipman"],["flame","Açık alev"]];
+  lg.innerHTML = items.map(i => `<span><i class="sw k-${i[0]}"></i>${i[1]}</span>`).join("");
+}
+
+function blockEl(b, kind, label, pid){
+  const d = document.createElement("div");
+  const w = L(b.e) - L(b.s);
+  d.className = "blk k-" + kind;
+  d.style.left = L(b.s) + "%";
+  d.style.width = w + "%";
+  d.title = b.s + "–" + b.e + " · " + (b.t || label);
+  if (w >= 4) d.textContent = label;
+  if (pid) d.dataset.p = pid;
+  return d;
+}
+
+function renderGantt(){
+  const g = document.getElementById("gantt");
+  g.innerHTML = "";
+  const head = document.createElement("div");
+  head.className = "g-row g-head";
+  let hrs = "";
+  for (let h = 10; h <= 16; h++){
+    const cls = h === 10 ? "hr first" : (h === 16 ? "hr last" : "hr");
+    hrs += `<span class="${cls}" style="left:${(h - 10) / 6 * 100}%">${h}:00</span>`;
+  }
+  head.innerHTML = `<div class="g-label">SAAT</div><div class="g-track">${hrs}</div>`;
+  g.appendChild(head);
+
+  P.forEach(p => {
+    const row = document.createElement("div");
+    row.className = "g-row" + (sel === p.id ? " sel" : "");
+    const lab = document.createElement("button");
+    lab.type = "button"; lab.className = "g-label"; lab.textContent = p.name;
+    lab.setAttribute("aria-label", p.name + " planını aç");
+    lab.addEventListener("click", () => select(p.id));
+    const tr = document.createElement("div"); tr.className = "g-track";
+    p.blocks.forEach(b => {
+      if (b.k === "off") return;
+      const el = blockEl(b, b.k, b.g !== undefined ? b.g : b.t, p.id);
+      if (sel !== "herkes" && sel !== p.id) el.classList.add("dim");
+      tr.appendChild(el);
+    });
+    row.appendChild(lab); row.appendChild(tr);
+    g.appendChild(row);
+  });
+
+  const sep = document.createElement("div");
+  sep.className = "g-sep"; sep.innerHTML = "<span>Ortak ekipman</span>";
+  g.appendChild(sep);
+
+  R.forEach(r => {
+    const row = document.createElement("div");
+    row.className = "g-row";
+    const lab = document.createElement("div");
+    lab.className = "g-label res"; lab.textContent = r.name;
+    const tr = document.createElement("div"); tr.className = "g-track";
+    r.b.forEach(b => {
+      const el = blockEl(b, b.k || "res", b.t, b.p);
+      if (sel !== "herkes"){
+        if (b.p === sel) el.classList.add("mine"); else el.classList.add("dim");
+      }
+      tr.appendChild(el);
+    });
+    row.appendChild(lab); row.appendChild(tr);
+    g.appendChild(row);
+  });
+  updateNow();
+}
+
+function updateNow(){
+  document.querySelectorAll(".now").forEach(n => n.remove());
+  const d = new Date(); const m = d.getHours() * 60 + d.getMinutes();
+  if (m < D0 || m > D0 + SPAN) return;
+  const pct = (m - D0) / SPAN * 100;
+  document.querySelectorAll("#gantt .g-track").forEach((tr, i) => {
+    const n = document.createElement("div"); n.className = "now"; n.style.left = pct + "%";
+    if (i === 0){ const tag = document.createElement("span"); tag.className = "now-tag"; tag.textContent = "şu an"; n.appendChild(tag); }
+    tr.appendChild(n);
+  });
+}
+
+function lanesFor(id){
+  const out = [];
+  R.forEach(r => r.b.forEach(b => { if (b.p === id) out.push({name:r.name, s:b.s, e:b.e, opt:b.k === "spare"}); }));
+  return out;
+}
+
+function spanText(p){
+  const main = p.blocks.filter(b => b.k !== "off" && b.k !== "spare");
+  const s = main[0].s, e = main[main.length - 1].e;
+  const spare = p.blocks.filter(b => b.k === "spare").map(b => b.s + "–" + b.e);
+  return "Lab'da " + s + "–" + e + (spare.length ? " · yedek " + spare.join(", ") : "");
+}
+
+function cardInner(p){
+  const steps = p.blocks.map(b => `
+    <li class="step k-${b.k}-row">
+      <span class="time">${b.s}–${b.e}</span>
+      <div><div class="step-t"><i class="sw k-${b.k}"></i><span>${esc(b.t)}</span><span class="kname">${KINDS[b.k]}</span></div>
+      ${b.d ? `<p>${esc(b.d)}</p>` : ""}</div>
+    </li>`).join("");
+  const lanes = lanesFor(p.id).map(l => `<li><span>${esc(l.name)}${l.opt ? " (isteğe bağlı)" : ""}</span><span>${l.s}–${l.e}</span></li>`).join("");
+  const kit = p.kit.map(k => `<li>${esc(k)}</li>`).join("");
+  const notes = p.notes.map(n => `<div class="note${n.w ? " w" : ""}"><b>${n.w ? "Dikkat" : "Not"}</b>${esc(n.x)}</div>`).join("");
+  const pre = p.before.map((x, i) => {
+    const id = `pre-${p.id}-${i}`;
+    const on = store("iaLab." + id) === "1";
+    return `<li><label for="${id}"><input type="checkbox" id="${id}" data-k="${id}"${on ? " checked" : ""}><span>${esc(x)}</span></label></li>`;
+  }).join("");
+  return `
+    <div class="card-body">
+      <div><h4>Akış</h4><ol class="steps">${steps}</ol></div>
+      <div class="side">
+        ${lanes ? `<div><h4>Ortak ekipman sıran</h4><ul class="res-list">${lanes}</ul></div>` : ""}
+        <div><h4>Yanında olsun</h4><ul class="kit">${kit}</ul></div>
+        <div><h4>Dikkat ve notlar</h4><div class="notes">${notes}</div></div>
+        <div><h4>Lab gününden önce</h4><ul class="pre">${pre}</ul></div>
+      </div>
+    </div>`;
+}
+
+function renderCards(){
+  const c = document.getElementById("cards");
+  const wrap = document.getElementById("wrap");
+  if (sel === "herkes"){
+    wrap.classList.remove("one");
+    c.className = "cards all";
+    c.innerHTML = P.map(p => {
+      const warns = p.notes.filter(n => n.w).length;
+      return `<details class="card" id="card-${p.id}">
+        <summary>
+          <div class="sum-row"><span class="sum-name">${esc(p.name)}</span><span class="toggle"><span class="o">Aç</span><span class="c">Kapat</span></span></div>
+          <p class="topic">${esc(p.topic)}</p>
+          <div class="sum-meta"><span class="span">${spanText(p)}</span>${warns ? `<span class="pill">${warns} dikkat</span>` : ""}</div>
+        </summary>
+        ${cardInner(p)}
+      </details>`;
+    }).join("");
+  } else {
+    const p = byId(sel);
+    wrap.classList.add("one");
+    c.className = "cards one";
+    c.innerHTML = `<article class="card" id="card-${p.id}">
+      <div class="card-head"><h3>${esc(p.name)}</h3><span class="span">${spanText(p)}</span></div>
+      <p class="topic">${esc(p.topic)}</p>
+      ${cardInner(p)}
+    </article>`;
+  }
+  c.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+    cb.addEventListener("change", () => store("iaLab." + cb.dataset.k, cb.checked ? "1" : "0"));
+  });
+}
+
+function select(id){
+  if (id !== "herkes" && !byId(id)) id = "herkes";
+  sel = id;
+  store("iaLab.sel", id);
+  try { history.replaceState(null, "", "#" + id); } catch(e){}
+  renderChips(); renderCards(); renderGantt();
+}
+
+(function init(){
+  renderLegend();
+  const h = (location.hash || "").slice(1);
+  const saved = store("iaLab.sel");
+  if (h && (h === "herkes" || byId(h))) sel = h;
+  else if (saved && (saved === "herkes" || byId(saved))) sel = saved;
+  renderChips(); renderCards(); renderGantt();
+  window.addEventListener("hashchange", () => { const k = location.hash.slice(1); if (k && k !== sel) select(k); });
+  setInterval(updateNow, 60000);
+})();
+</script>
+</body>
+</html>
